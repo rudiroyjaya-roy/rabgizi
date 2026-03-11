@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sppg Purworejo Pituruh Kalikotes - Pelaporan Keuangan</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        /* Font Utama Aplikasi Shell */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        /* Font Khusus Kalkulator (Dari index.html) */
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        /* --- Style Bawaan Sidebar --- */
+        .sidebar-item {
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-item:hover {
+            background-color: rgba(59, 130, 246, 0.1);
+            color: #2563eb;
+        }
+
+        .submenu {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .submenu.active {
+            max-height: 500px;
+        }
+
+        @media (max-width: 1024px) {
+            #sidebar {
+                transform: translateX(-100%);
+            }
+
+            #sidebar.open {
+                transform: translateX(0);
+            }
+        }
+
+        /* --- Style Khusus Kalkulator (Dari index.html) --- */
+        /* Wrapper ID agar font tidak berantakan ke sidebar */
+        #mbg-calculator-wrapper {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .nav-active {
+            color: #ffffff;
+            background: #2563eb;
+            border-radius: 16px;
+            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+        }
+
+        /* Scrollbar custom */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body class="text-slate-700">
+
+    <div class="flex min-h-screen overflow-hidden">
+
+        <main class="flex-1 flex flex-col min-w-0">
+
+            <header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-40">
+                <button onclick="toggleSidebar()" class="lg:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg"> <i data-lucide="menu"></i> </button>
+                <div class="hidden md:block">
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Lokasi: SPPG Purworejo Pituruh Kalikotes</p>
+                </div>
+                <div class="flex items-center gap-6">
+                    <div class="text-right hidden sm:block">
+                        <p id="current-date" class="text-sm font-medium text-slate-800">Senin, 15 Januari 2024</p>
+                        <p id="current-time" class="text-xs text-blue-600 font-bold">10:00:00 WIB</p>
+                    </div>
+                </div>
+            </header>
+
+            <div class="p-6 overflow-y-auto" id="mbg-calculator-wrapper">
+
+                <div class="bg-white border shadow-sm rounded-2xl mb-8">
+                    <div class="p-4 flex flex-wrap justify-between items-center gap-4">
+                        <div class="flex items-center gap-3">
+                            <div>
+                                <h1 class="font-extrabold text-xl tracking-tight text-slate-800 leading-none">
+                                    SASARAN & RENCANA BELANJA
+                                </h1>
+                                <span class="text-[10px] font-bold text-blue-600 uppercase tracking-widest">
+                                    Sistem Kalkulator SPPG Kalikotes
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 bg-slate-100 p-2 rounded-2xl border border-slate-200">
+                            <div class="flex flex-col px-2">
+                                <label class="text-[8px] font-black text-slate-400">DARI TANGGAL</label>
+                                <input type="date" id="global-start" onchange="render()" class="bg-transparent text-[11px] font-bold outline-none">
+                            </div>
+                            <div class="h-8 w-[1px] bg-slate-300"></div>
+                            <div class="flex flex-col px-2">
+                                <label class="text-[8px] font-black text-slate-400">SAMPAI TANGGAL</label>
+                                <input type="date" id="global-end" onchange="render()" class="bg-transparent text-[11px] font-bold outline-none">
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="text-right border-r border-slate-200 pr-4">
+                                <p class="text-[9px] font-black text-slate-400 uppercase">Saldo Berjalan</p>
+                                <p id="daily-balance" class="font-mono font-extrabold text-emerald-600 text-lg">Rp 0</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                    Sisa Anggaran (Filter)
+                                </p>
+                                <p id="global-balance" class="font-mono font-extrabold text-blue-700 text-lg">Rp 0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pb-32">
+                    <div id="page-sasaran" class="page active">
+                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                            <div class="lg:col-span-3 bg-white p-6 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 space-y-4 h-fit sticky top-24">
+                                <h2 class="font-black text-slate-800 flex items-center gap-2 mb-2 text-lg"><i data-lucide="plus-circle" class="text-blue-600"></i> Sasaran</h2>
+                                <input type="hidden" id="target-id">
+                                <div class="space-y-3">
+                                    <div class="group">
+                                        <label class="text-[10px] font-black text-slate-400 group-focus-within:text-blue-500 transition-colors">TANGGAL OPERASIONAL</label>
+                                        <input type="date" id="target-date" onchange="render()" class="w-full p-3 bg-slate-50 border-2 border-slate-50 rounded-2xl text-sm font-bold focus:border-blue-500 outline-none transition-all">
+                                    </div>
+                                    <div>
+                                        <label class="text-[10px] font-black text-slate-400">NAMA SEKOLAH</label>
+                                        <input type="text" id="target-school" placeholder="Nama sekolah..." class="w-full p-3 bg-slate-50 border-2 border-slate-50 rounded-2xl text-sm font-bold focus:border-blue-500 outline-none transition-all">
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label class="text-[10px] font-black text-slate-400 uppercase">Porsi Besar</label>
+                                            <input type="number" id="target-qty-big" placeholder="0" class="w-full p-3 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none">
+                                        </div>
+                                        <div>
+                                            <label class="text-[10px] font-black text-slate-400 uppercase">Porsi Kecil</label>
+                                            <input type="number" id="target-qty-small" placeholder="0" class="w-full p-3 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none">
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2 border-t pt-3 mt-3">
+                                        <div>
+                                            <label class="text-[10px] font-black text-slate-400">HRG BESAR</label>
+                                            <input type="number" id="target-price-big" value="10000" class="w-full p-3 bg-emerald-50 text-emerald-700 rounded-2xl text-sm font-black outline-none">
+                                        </div>
+                                        <div>
+                                            <label class="text-[10px] font-black text-slate-400">HRG KECIL</label>
+                                            <input type="number" id="target-price-small" value="8000" class="w-full p-3 bg-emerald-50 text-emerald-700 rounded-2xl text-sm font-black outline-none">
+                                        </div>
+                                    </div>
+                                </div>
+                                <button onclick="saveTarget()" class="w-full bg-blue-600 text-white font-black py-4 rounded-2xl hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200 transition-all flex justify-center items-center gap-2 shadow-md">
+                                    <i data-lucide="check-circle" size="18"></i> SIMPAN DATA
+                                </button>
+                                <div class="flex gap-2">
+                                    <button onclick="exportAll('pdf', 'target')" class="flex-1 p-2 bg-slate-800 text-white rounded-xl text-[10px] font-bold hover:bg-black transition-all">PDF</button>
+                                    <button onclick="exportAll('excel', 'target')" class="flex-1 p-2 bg-emerald-600 text-white rounded-xl text-[10px] font-bold hover:bg-emerald-700 transition-all">EXCEL</button>
+                                    <button onclick="clearForm('target')" class="flex-1 p-2 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-bold">RESET</button>
+                                </div>
+                            </div>
+
+                            <div class="lg:col-span-9 space-y-4">
+                                <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+                                    <div class="p-6 border-b border-slate-50 flex justify-between items-center bg-white/50">
+                                        <h3 class="font-black text-slate-800 text-lg italic tracking-tight uppercase">Database Anggaran Sasaran</h3>
+                                        <div class="relative">
+                                            <i data-lucide="search" size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                            <input type="text" id="search-target" oninput="render()" placeholder="Cari nama sekolah..." class="pl-10 pr-4 py-2 bg-slate-50 border-none rounded-full text-xs font-bold w-64 focus:ring-2 ring-blue-100 outline-none">
+                                        </div>
+                                    </div>
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-left text-[11px]">
+                                            <thead class="bg-slate-50/50 text-slate-400 font-black uppercase tracking-widest">
+                                                <tr>
+                                                    <th class="p-5">Tgl</th>
+                                                    <th class="p-5">Sekolah</th>
+                                                    <th class="p-5 text-center">P.Besar</th>
+                                                    <th class="p-5 text-center">P.Kecil</th>
+                                                    <th class="p-5 text-center bg-blue-50/30 text-blue-600">T.Porsi</th>
+                                                    <th class="p-5 text-right">Hrg Besar</th>
+                                                    <th class="p-5 text-right font-black">Total Anggaran</th>
+                                                    <th class="p-5 text-center bg-indigo-50 text-indigo-600">Anggaran/Hari</th>
+                                                    <th class="p-5 text-center">Aksi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="target-body" class="divide-y divide-slate-50 text-slate-600 font-bold"></tbody>
+                                        </table>
+                                    </div>
+                                    <div class="p-4 bg-slate-50/50 flex justify-between items-center border-t border-slate-50">
+                                        <span id="target-page-info" class="text-[10px] font-black text-slate-400 uppercase"></span>
+                                        <div class="flex gap-2">
+                                            <button onclick="changePage('target', -1)" class="p-2 bg-white rounded-lg border hover:bg-blue-600 hover:text-white transition-all"><i data-lucide="chevron-left" size="14"></i></button>
+                                            <button onclick="changePage('target', 1)" class="p-2 bg-white rounded-lg border hover:bg-blue-600 hover:text-white transition-all"><i data-lucide="chevron-right" size="14"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="page-belanja" class="page">
+                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                            <div class="lg:col-span-3 bg-white p-6 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 space-y-4 h-fit sticky top-24">
+                                <h2 class="font-black text-slate-800 flex items-center gap-2 mb-2 text-lg"><i data-lucide="shopping-cart" class="text-orange-500"></i> Belanja</h2>
+                                <input type="hidden" id="shop-id">
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="text-[10px] font-black text-slate-400 uppercase">Tgl Belanja</label>
+                                        <input type="date" id="shop-date" onchange="render()" class="w-full p-3 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none focus:ring-2 ring-orange-100">
+                                    </div>
+                                    <div>
+                                        <label class="text-[10px] font-black text-slate-400 uppercase">Nama Bahan</label>
+                                        <input type="text" id="shop-name" placeholder="Daging Sapi..." class="w-full p-3 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none">
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label class="text-[10px] font-black text-slate-400 uppercase">QTY</label>
+                                            <input type="number" id="shop-qty" placeholder="0" class="w-full p-3 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none">
+                                        </div>
+                                        <div>
+                                            <label class="text-[10px] font-black text-slate-400 uppercase">Satuan</label>
+                                            <input type="text" id="shop-unit" placeholder="Kg" class="w-full p-3 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-[10px] font-black text-slate-400 uppercase">Harga Satuan</label>
+                                        <input type="number" id="shop-price" placeholder="0" class="w-full p-3 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none">
+                                    </div>
+                                </div>
+                                <button onclick="saveShopping()" class="w-full bg-slate-900 text-white font-black py-4 rounded-2xl hover:bg-black transition-all shadow-xl shadow-slate-200">
+                                    SIMPAN BELANJA
+                                </button>
+                                <div class="flex gap-2">
+                                    <button onclick="exportAll('pdf', 'shop')" class="flex-1 p-2 bg-red-600 text-white rounded-xl text-[10px] font-bold">PDF</button>
+                                    <button onclick="exportAll('excel', 'shop')" class="flex-1 p-2 bg-emerald-600 text-white rounded-xl text-[10px] font-bold">EXCEL</button>
+                                    <button onclick="clearForm('shop')" class="flex-1 p-2 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-bold">RESET</button>
+                                </div>
+                            </div>
+
+                            <div class="lg:col-span-9 space-y-4">
+                                <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+                                    <div class="p-6 border-b border-slate-50 flex justify-between items-center">
+                                        <h3 class="font-black text-slate-800 text-lg uppercase italic tracking-tight">Data Rincian Pengeluaran</h3>
+                                        <input type="text" id="search-shop" oninput="render()" placeholder="Cari bahan..." class="px-4 py-2 bg-slate-50 border-none rounded-full text-xs font-bold w-64 outline-none">
+                                    </div>
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-left text-[11px]">
+                                            <thead class="bg-slate-50/50 text-slate-400 font-black uppercase tracking-widest">
+                                                <tr>
+                                                    <th class="p-5">Tgl</th>
+                                                    <th class="p-5">Bahan</th>
+                                                    <th class="p-5 text-center">QTY</th>
+                                                    <th class="p-5 text-right">Harga Satuan</th>
+                                                    <th class="p-5 text-right font-black">Total</th>
+                                                    <th class="p-5 text-center bg-red-50 text-red-600">T.Belanja/Hari</th>
+                                                    <th class="p-5 text-center">Aksi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="shopping-body" class="divide-y divide-slate-50 text-slate-600 font-bold"></tbody>
+                                        </table>
+                                    </div>
+                                    <div class="p-4 bg-slate-50/50 flex justify-between items-center border-t border-slate-50">
+                                        <span id="shop-page-info" class="text-[10px] font-black text-slate-400 uppercase"></span>
+                                        <div class="flex gap-2">
+                                            <button onclick="changePage('shop', -1)" class="p-2 bg-white rounded-lg border"><i data-lucide="chevron-left" size="14"></i></button>
+                                            <button onclick="changePage('shop', 1)" class="p-2 bg-white rounded-lg border"><i data-lucide="chevron-right" size="14"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <nav class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-xl border border-white/50 px-6 py-4 rounded-[2.5rem] shadow-2xl flex gap-10 z-50">
+                    <button onclick="switchPage('sasaran')" id="nav-sasaran" class="flex flex-col items-center gap-1 nav-active px-6 py-2 transition-all duration-300">
+                        <i data-lucide="users" size="20"></i>
+                        <span class="text-[9px] font-black uppercase tracking-widest">Sasaran</span>
+                    </button>
+                    <button onclick="switchPage('belanja')" id="nav-belanja" class="flex flex-col items-center gap-1 text-slate-400 px-6 py-2 transition-all duration-300">
+                        <i data-lucide="shopping-bag" size="20"></i>
+                        <span class="text-[9px] font-black uppercase tracking-widest">Belanja</span>
+                    </button>
+                </nav>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const btn = document.getElementById('dropdownButton');
+        const menu = document.getElementById('dropdownMenu');
+
+        // Toggle Menu
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.classList.toggle('hidden');
+        });
+
+        // Tutup menu jika klik di luar
+        document.addEventListener('click', (e) => {
+            if (!btn.contains(e.target) && !menu.contains(e.target)) {
+                menu.classList.add('hidden');
+            }
+        });
+
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Toggle Sidebar
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        // Accordion functionality for sidebar
+        function toggleSubmenu(id, button) {
+            const submenu = document.getElementById(id);
+            const icon = button.querySelector('[data-lucide="chevron-down"]');
+
+            submenu.classList.toggle('active');
+
+            if (submenu.classList.contains('active')) {
+                icon.style.transform = 'rotate(180deg)';
+            } else {
+                icon.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        // Update Clock and Date
+        function updateDateTime() {
+            const now = new Date();
+            const optionsDate = {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            };
+            const dateStr = now.toLocaleDateString('id-ID', optionsDate);
+
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const timeStr = `${hours}:${minutes}:${seconds} WIB`;
+
+            document.getElementById('current-date').textContent = dateStr;
+            document.getElementById('current-time').textContent = timeStr;
+        }
+
+        setInterval(updateDateTime, 1000);
+        updateDateTime();
+    </script>
+
+    <script>
+        let targetData = JSON.parse(localStorage.getItem('mbg_v3_target')) || [];
+        let shoppingData = JSON.parse(localStorage.getItem('mbg_v3_shop')) || [];
+
+        // Pagination State
+        const itemsPerPage = 7;
+        let pageT = 1;
+        let pageS = 1;
+
+        const formatIDR = (n) => new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0
+        }).format(n);
+        const today = new Date().toISOString().split('T')[0];
+
+        document.getElementById('target-date').value = today;
+        document.getElementById('shop-date').value = today;
+        document.getElementById('global-start').value = today;
+        document.getElementById('global-end').value = today;
+
+        function switchPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('page-' + pageId).classList.add('active');
+            document.querySelectorAll('nav button').forEach(b => b.classList.remove('nav-active', 'text-slate-400'));
+            document.getElementById('nav-' + pageId).classList.add('nav-active');
+            lucide.createIcons();
+            render();
+        }
+
+        function saveTarget() {
+            const id = document.getElementById('target-id').value;
+            const big = parseInt(document.getElementById('target-qty-big').value) || 0;
+            const small = parseInt(document.getElementById('target-qty-small').value) || 0;
+            const pBig = parseInt(document.getElementById('target-price-big').value) || 0;
+            const pSmall = parseInt(document.getElementById('target-price-small').value) || 0;
+
+            const newItem = {
+                id: id ? parseInt(id) : Date.now(),
+                date: document.getElementById('target-date').value,
+                school: document.getElementById('target-school').value,
+                big,
+                small,
+                pBig,
+                pSmall,
+                totalPorsi: big + small,
+                totalBudget: (big * pBig) + (small * pSmall)
+            };
+
+            if (!newItem.school) return alert("Pilih sekolahnya dulu Bre!");
+
+            if (id) targetData = targetData.map(t => t.id == id ? newItem : t);
+            else targetData.push(newItem);
+
+            localStorage.setItem('mbg_v3_target', JSON.stringify(targetData));
+            clearForm('target');
+            render();
+        }
+
+        function saveShopping() {
+            const id = document.getElementById('shop-id').value;
+            const qty = parseFloat(document.getElementById('shop-qty').value) || 0;
+            const price = parseFloat(document.getElementById('shop-price').value) || 0;
+
+            const newItem = {
+                id: id ? parseInt(id) : Date.now(),
+                date: document.getElementById('shop-date').value,
+                name: document.getElementById('shop-name').value,
+                unit: document.getElementById('shop-unit').value,
+                qty,
+                price,
+                total: qty * price
+            };
+
+            if (!newItem.name) return alert("Bahan makanannya diisi dong!");
+
+            if (id) shoppingData = shoppingData.map(s => s.id == id ? newItem : s);
+            else shoppingData.push(newItem);
+
+            localStorage.setItem('mbg_v3_shop', JSON.stringify(shoppingData));
+            clearForm('shop');
+            render();
+        }
+
+        function changePage(type, val) {
+            if (type === 'target') pageT = Math.max(1, pageT + val);
+            else pageS = Math.max(1, pageS + val);
+            render();
+        }
+
+        function render() {
+            const selectedTargetDate = document.getElementById('target-date').value;
+            const selectedShopDate = document.getElementById('shop-date').value;
+            const searchT = document.getElementById('search-target').value.toLowerCase();
+            const searchS = document.getElementById('search-shop').value.toLowerCase();
+            const gStart = document.getElementById('global-start').value;
+            const gEnd = document.getElementById('global-end').value;
+
+            // --- 1. Filter & Render Sasaran ---
+            const dailyTargetTotals = {};
+            targetData.forEach(t => dailyTargetTotals[t.date] = (dailyTargetTotals[t.date] || 0) + t.totalBudget);
+
+            let filteredTarget = targetData.filter(t => t.school.toLowerCase().includes(searchT)).sort((a, b) => new Date(b.date) - new Date(a.date));
+            const totalPageT = Math.ceil(filteredTarget.length / itemsPerPage);
+            pageT = Math.min(pageT, totalPageT || 1);
+
+            document.getElementById('target-page-info').innerText = `Halaman ${pageT} dari ${totalPageT}`;
+            const displayTarget = filteredTarget.slice((pageT - 1) * itemsPerPage, pageT * itemsPerPage);
+
+            document.getElementById('target-body').innerHTML = displayTarget.map(t => `
+                <tr class="hover:bg-slate-50 transition-all">
+                    <td class="p-5">${t.date}</td>
+                    <td class="p-5 text-slate-900 uppercase">${t.school}</td>
+                    <td class="p-5 text-center">${t.big}</td>
+                    <td class="p-5 text-center">${t.small}</td>
+                    <td class="p-5 text-center bg-blue-50/50 text-blue-600">${t.totalPorsi}</td>
+                    <td class="p-5 text-right font-black text-slate-400">${formatIDR(t.pBig)}</td>
+                    <td class="p-5 text-right text-slate-800">${formatIDR(t.totalBudget)}</td>
+                    <td class="p-5 text-center font-black text-indigo-700 bg-indigo-50">${formatIDR(dailyTargetTotals[t.date])}</td>
+                    <td class="p-5 text-center">
+                        <div class="flex justify-center gap-2">
+                            <button onclick="editItem('target', ${t.id})" class="p-2 text-blue-500 hover:bg-white rounded-xl shadow-sm border border-slate-100 transition-all"><i data-lucide="edit-3" size="14"></i></button>
+                            <button onclick="deleteItem('target', ${t.id})" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"><i data-lucide="trash-2" size="14"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+
+            // --- 2. Filter & Render Belanja ---
+            const dailyShopTotals = {};
+            shoppingData.forEach(s => dailyShopTotals[s.date] = (dailyShopTotals[s.date] || 0) + s.total);
+
+            let filteredShop = shoppingData.filter(s => s.name.toLowerCase().includes(searchS)).sort((a, b) => new Date(b.date) - new Date(a.date));
+            const totalPageS = Math.ceil(filteredShop.length / itemsPerPage);
+            pageS = Math.min(pageS, totalPageS || 1);
+
+            document.getElementById('shop-page-info').innerText = `Halaman ${pageS} dari ${totalPageS}`;
+            const displayShop = filteredShop.slice((pageS - 1) * itemsPerPage, pageS * itemsPerPage);
+
+            document.getElementById('shopping-body').innerHTML = displayShop.map(s => `
+                <tr class="hover:bg-slate-50 transition-all">
+                    <td class="p-5">${s.date}</td>
+                    <td class="p-5 text-slate-900 uppercase">${s.name}</td>
+                    <td class="p-5 text-center italic">${s.qty} ${s.unit}</td>
+                    <td class="p-5 text-right text-slate-400 font-bold">${formatIDR(s.price)}</td>
+                    <td class="p-5 text-right text-slate-800">${formatIDR(s.total)}</td>
+                    <td class="p-5 text-center font-black text-red-700 bg-red-50">${formatIDR(dailyShopTotals[s.date])}</td>
+                    <td class="p-5 text-center">
+                        <div class="flex justify-center gap-2">
+                            <button onclick="editItem('shop', ${s.id})" class="p-2 text-blue-500 hover:bg-white rounded-xl shadow-sm border border-slate-100 transition-all"><i data-lucide="edit-3" size="14"></i></button>
+                            <button onclick="deleteItem('shop', ${s.id})" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"><i data-lucide="trash-2" size="14"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+
+            // --- 3. Balances & Filter Logics ---
+            const activePage = document.querySelector('.page.active').id;
+            const relevantDate = activePage === 'page-sasaran' ? selectedTargetDate : selectedShopDate;
+
+            // Saldo Berjalan (Refresh to 0 based on active date input)
+            const budgetToday = targetData.filter(t => t.date === relevantDate).reduce((a, b) => a + b.totalBudget, 0);
+            const spentToday = shoppingData.filter(s => s.date === relevantDate).reduce((a, b) => a + b.total, 0);
+            document.getElementById('daily-balance').innerText = formatIDR(budgetToday - spentToday);
+
+            // Sisa Range Filter (Custom Date Range)
+            const budgetRange = targetData.filter(t => t.date >= gStart && t.date <= gEnd).reduce((a, b) => a + b.totalBudget, 0);
+            const spentRange = shoppingData.filter(s => s.date >= gStart && s.date <= gEnd).reduce((a, b) => a + b.total, 0);
+            document.getElementById('global-balance').innerText = formatIDR(budgetRange - spentRange);
+
+            lucide.createIcons();
+        }
+
+        // --- Export & Other Helpers ---
+        function exportAll(fmt, type) {
+            const data = type === 'target' ? targetData : shoppingData;
+            const title = `LAPORAN_MBG_${type.toUpperCase()}_${today}`;
+
+            if (fmt === 'pdf') {
+                const {
+                    jsPDF
+                } = window.jspdf;
+                const doc = new jsPDF('l', 'mm', 'a4');
+                doc.setFontSize(16);
+                doc.text("MBG MANAGER - LAPORAN OPERASIONAL", 14, 20);
+                doc.setFontSize(10);
+                doc.text(`Unit: SPPG / Yayasan BGN | Tanggal: ${today}`, 14, 28);
+
+                const headers = type === 'target' ? [
+                    ['Tanggal', 'Sekolah', 'P.Besar', 'P.Kecil', 'T.Porsi', 'Anggaran']
+                ] : [
+                    ['Tanggal', 'Bahan', 'Qty', 'Satuan', 'Harga', 'Total']
+                ];
+
+                const body = data.map(d => type === 'target' ? [d.date, d.school, d.big, d.small, d.totalPorsi, formatIDR(d.totalBudget)] : [d.date, d.name, d.qty, d.unit, formatIDR(d.price), formatIDR(d.total)]);
+
+                doc.autoTable({
+                    startY: 35,
+                    head: headers,
+                    body: body,
+                    theme: 'grid'
+                });
+                doc.save(title + '.pdf');
+            } else {
+                const ws = XLSX.utils.json_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Laporan");
+                XLSX.writeFile(wb, title + '.xlsx');
+            }
+        }
+
+        function editItem(type, id) {
+            if (type === 'target') {
+                const t = targetData.find(i => i.id == id);
+                document.getElementById('target-id').value = t.id;
+                document.getElementById('target-date').value = t.date;
+                document.getElementById('target-school').value = t.school;
+                document.getElementById('target-qty-big').value = t.big;
+                document.getElementById('target-qty-small').value = t.small;
+                document.getElementById('target-price-big').value = t.pBig;
+                document.getElementById('target-price-small').value = t.pSmall;
+            } else {
+                const s = shoppingData.find(i => i.id == id);
+                document.getElementById('shop-id').value = s.id;
+                document.getElementById('shop-date').value = s.date;
+                document.getElementById('shop-name').value = s.name;
+                document.getElementById('shop-qty').value = s.qty;
+                document.getElementById('shop-unit').value = s.unit;
+                document.getElementById('shop-price').value = s.price;
+            }
+        }
+
+        function deleteItem(type, id) {
+            if (!confirm("Yakin hapus data ini? Gak bisa dibalikin lho!")) return;
+            if (type === 'target') targetData = targetData.filter(t => t.id !== id);
+            else shoppingData = shoppingData.filter(s => s.id !== id);
+            localStorage.setItem(`mbg_v3_${type}`, JSON.stringify(type === 'target' ? targetData : shoppingData));
+            render();
+        }
+
+        function clearForm(p) {
+            document.getElementById(p + '-id').value = '';
+            const fields = p === 'target' ? ['target-school', 'target-qty-big', 'target-qty-small'] : ['shop-name', 'shop-qty', 'shop-unit', 'shop-price'];
+            fields.forEach(f => document.getElementById(f).value = '');
+        }
+
+        window.onload = render;
+    </script>
+</body>
+
+</html>
